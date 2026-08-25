@@ -273,11 +273,11 @@ const CORE_OPTIONS = [
 ];
 const SQUAT_CAP = 205;
 const SUPPLEMENTS = [
-  { id: "omega3", name: "Omega-3", note: "Well-supported, recovery and inflammation" },
-  { id: "multivitamin", name: "Multivitamin", note: "Baseline coverage" },
-  { id: "probiotic", name: "Probiotic", note: "Gut health support" },
-  { id: "antioxidant", name: "Super antioxidant", note: "Evidence mixed \u2014 may blunt training adaptation at high doses" },
-  { id: "glucosaplex", name: "Glucosaplex", note: "Glucosamine, turmeric, ginger, MSM, cat's claw \u2014 joint support, relevant given knee/Achilles history" }
+  { id: "omega3", name: "Omega-3", note: "Well-supported, recovery and inflammation", doses: 1 },
+  { id: "multivitamin", name: "Multivitamin", note: "Baseline coverage", doses: 1 },
+  { id: "probiotic", name: "Probiotic", note: "Gut health support", doses: 1 },
+  { id: "antioxidant", name: "Super antioxidant", note: "Evidence mixed \u2014 may blunt training adaptation at high doses", doses: 2 },
+  { id: "glucosaplex", name: "Glucosaplex", note: "Glucosamine, turmeric, ginger, MSM, cat's claw \u2014 joint support, relevant given knee/Achilles history", doses: 3 }
 ];
 
 const DEFAULT_STATE = {
@@ -865,35 +865,66 @@ function renderSupplements(el) {
   h2.textContent = "Today's supplements";
   card.appendChild(h2);
 
-  const takenCount = Object.values(state.supplementsToday.taken).filter(Boolean).length;
+  const totalDoses = SUPPLEMENTS.reduce((sum, s) => sum + s.doses, 0);
+  const takenDoses = SUPPLEMENTS.reduce((sum, s) => sum + (state.supplementsToday.taken[s.id] || 0), 0);
   const sub = document.createElement("p");
   sub.style.cssText = "font-size:12px;color:var(--text-muted);margin:-6px 0 6px;";
-  sub.textContent = takenCount + " of " + SUPPLEMENTS.length + " taken today";
+  sub.textContent = takenDoses + " of " + totalDoses + " doses taken today";
   card.appendChild(sub);
 
   SUPPLEMENTS.forEach(s => {
     const item = document.createElement("div");
-    item.className = "checklist-item";
-    const check = document.createElement("div");
-    const taken = state.supplementsToday.taken[s.id];
-    check.className = "check" + (taken ? " done" : "");
-    check.innerHTML = taken ? "&#10003;" : "";
-    check.onclick = () => {
-      state.supplementsToday.taken[s.id] = !state.supplementsToday.taken[s.id];
-      saveState();
-      render();
-    };
-    item.appendChild(check);
+    item.className = "row";
+
+    const top = document.createElement("div");
+    top.className = "ex-top";
     const textWrap = document.createElement("div");
     const label = document.createElement("div");
-    label.className = "w-label";
+    label.className = "ex-name";
     label.textContent = s.name;
     textWrap.appendChild(label);
     const note = document.createElement("div");
     note.className = "ex-meta";
     note.textContent = s.note;
     textWrap.appendChild(note);
-    item.appendChild(textWrap);
+    top.appendChild(textWrap);
+
+    const taken = state.supplementsToday.taken[s.id] || 0;
+
+    if (s.doses === 1) {
+      const check = document.createElement("div");
+      check.className = "check" + (taken >= 1 ? " done" : "");
+      check.innerHTML = taken >= 1 ? "&#10003;" : "";
+      check.style.flex = "0 0 auto";
+      check.onclick = () => {
+        state.supplementsToday.taken[s.id] = taken >= 1 ? 0 : 1;
+        saveState();
+        render();
+      };
+      top.appendChild(check);
+      item.appendChild(top);
+    } else {
+      item.appendChild(top);
+      const chips = document.createElement("div");
+      chips.className = "set-chips";
+      for (let i = 0; i < s.doses; i++) {
+        const chip = document.createElement("div");
+        const filled = i < taken;
+        chip.className = "set-chip" + (filled ? " filled" : "");
+        chip.textContent = filled ? "\u2713" : String(i + 1);
+        chip.onclick = () => {
+          state.supplementsToday.taken[s.id] = i < taken ? i : i + 1;
+          saveState();
+          render();
+        };
+        chips.appendChild(chip);
+      }
+      item.appendChild(chips);
+      const doseNote = document.createElement("div");
+      doseNote.className = "reps-note";
+      doseNote.textContent = taken + " of " + s.doses + " doses today \u00b7 tap to mark taken";
+      item.appendChild(doseNote);
+    }
     card.appendChild(item);
   });
   el.appendChild(card);
