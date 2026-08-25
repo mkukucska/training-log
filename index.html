@@ -311,11 +311,13 @@ function fmtDate(d) {
 }
 
 // ---------- storage ----------
+const STORAGE_KEY = "training_state";
+
 async function loadState() {
   try {
-    const res = await window.storage.get("training_state");
-    if (res && res.value) {
-      const parsed = JSON.parse(res.value);
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
       state = Object.assign({}, DEFAULT_STATE, parsed);
       state.weights = Object.assign({}, DEFAULT_STATE.weights, parsed.weights || {});
       state.hydrationToday = parsed.hydrationToday || { date: null, bottles: 0 };
@@ -326,6 +328,7 @@ async function loadState() {
       state = JSON.parse(JSON.stringify(DEFAULT_STATE));
     }
   } catch (e) {
+    console.error("load failed", e);
     state = JSON.parse(JSON.stringify(DEFAULT_STATE));
   }
   if (state.hydrationToday.date !== todayStr()) {
@@ -336,13 +339,13 @@ async function loadState() {
   }
 }
 
-let saveTimer = null;
 function saveState() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    try { await window.storage.set("training_state", JSON.stringify(state)); }
-    catch (e) { console.error("save failed", e); }
-  }, 250);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error("save failed", e);
+    showToast("Save failed \u2014 storage may be full or blocked");
+  }
 }
 
 function showToast(msg, undoFn) {
